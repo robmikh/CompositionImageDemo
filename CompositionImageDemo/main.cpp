@@ -86,6 +86,9 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     content.Brush(brush);
     root.Children().InsertAtTop(content);
 
+    // The bulk of this sample goes on in this function.
+    // It will (1) load a file from disk, (2) decode the image and place it in a texture,
+    // and (3) it will copy the contents of the texture to the provided composition surface.
     LoadImageIntoSurface(surface, d3dDevice);
 
     // Sometimes the GPU might have to reset due to errors. When ths happens, we'll
@@ -146,7 +149,7 @@ std::future<winrt::com_ptr<ID3D11Texture2D>> CreateTextureFromImageAsync(winrt::
         auto pixelData = co_await frame.GetPixelDataAsync();
         auto bytes = pixelData.DetachPixelData();
 
-        // Now we need to create a D3D Texture
+        // Now we need to create a D3D texture
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = width;
         desc.Height = height;
@@ -190,7 +193,15 @@ void CopyTexutreIntoCompositionSurface(
             winrt::check_hresult(surfaceInterop->EndDraw());
         });
 
-    d3dContext->CopySubresourceRegion(surfaceTexture.get(), 0, offset.x, offset.y, 0, sourceTexture.get(), 0, nullptr);
+    d3dContext->CopySubresourceRegion(
+        surfaceTexture.get(), 
+        0, // We only have one subresource
+        offset.x, 
+        offset.y, 
+        0, // z
+        sourceTexture.get(), 
+        0, // We only have one subresource
+        nullptr); // Copy the entire thing
 }
 
 winrt::fire_and_forget LoadImageIntoSurface(
@@ -219,6 +230,9 @@ winrt::fire_and_forget RegisterForDeviceLost(
     auto d3dDevice4 = d3dDevice.as<ID3D11Device4>();
     winrt::check_hresult(d3dDevice4->RegisterDeviceRemovedEvent(deviceLostEvent.get(), &cookie));
 
+    // This sample uses coroutines to wait on the handle without blocking
+    // the calling thread. This will resume our function on a thread pool thread. 
+    // The way you handle this event will be up to your application's structure.
     co_await winrt::resume_on_signal(deviceLostEvent.get());
     deviceLostEvent.ResetEvent(); // Reset the event since we're reusing it.
     d3dDevice4->UnregisterDeviceRemoved(cookie);
