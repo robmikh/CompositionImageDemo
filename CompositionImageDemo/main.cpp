@@ -92,9 +92,9 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     LoadImageIntoSurface(surface, d3dDevice);
 
     // Sometimes the GPU might have to reset due to errors. When ths happens, we'll
-    // need to create a new D3D device and redraw our surface. We can get an event
-    // that will be signaled when that happens. This function waits for that event
-    // and then replaces the redering device on our CompositionGraphicsDevice.
+    // need to create a new D3D device and redraw our surface. We can get D3D to signal
+    // an event when that happens. This function waits for that event and then replaces 
+    // the rendering device on our CompositionGraphicsDevice.
     wil::shared_event deviceLostEvent(wil::EventOptions::ManualReset);
     RegisterForDeviceLost(deviceLostEvent, d3dDevice, compositionGraphics);
 
@@ -123,7 +123,7 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     return static_cast<int>(msg.wParam);
 }
 
-// We can only use IAsync* with WinRT objects
+// We can only use IAsyncOperation with WinRT objects
 std::future<winrt::com_ptr<ID3D11Texture2D>> CreateTextureFromImageAsync(winrt::com_ptr<ID3D11Device> const& d3dDevice)
 {
     // Get our own references for the coroutine
