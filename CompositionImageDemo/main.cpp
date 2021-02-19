@@ -98,7 +98,7 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     // When we get a D3D device, the RenderingDeviceReplaced event will fire. Here
     // we'll register for the event and redraw the surface when it fires. You can 
     // exercise this code by using "dxcap.exe -forcetdr". You can get dxcap by going
-    // to Settings -> Apps -> Optoinal features -> Graphics Tools. If the image is 
+    // to Settings -> Apps -> Optional features -> Graphics Tools. If the image is 
     // still there after all the flashing, it worked!
     auto eventToken = compositionGraphics.RenderingDeviceReplaced([surface](auto&& compGraphics, auto&&)
         {
