@@ -22,6 +22,9 @@ namespace util
 // We can only use IAsync* with WinRT objects
 std::future<winrt::com_ptr<ID3D11Texture2D>> CreateTextureFromImageAsync(winrt::com_ptr<ID3D11Device> const& d3dDevice)
 {
+    // Get our own references for the coroutine
+    auto device = d3dDevice;
+
     // You'll need to get a stream to your file. This demo uses a local image.
     auto currentPath = std::filesystem::current_path();
     auto folder = co_await winrt::StorageFolder::GetFolderFromPathAsync(currentPath.wstring());
@@ -57,7 +60,7 @@ std::future<winrt::com_ptr<ID3D11Texture2D>> CreateTextureFromImageAsync(winrt::
         // Each BGRA pixel is 4 bytes.
         initData.SysMemPitch = width * 4;
 
-        winrt::check_hresult(d3dDevice->CreateTexture2D(&desc, &initData, texture.put()));
+        winrt::check_hresult(device->CreateTexture2D(&desc, &initData, texture.put()));
     }
     co_return texture;
 }
@@ -100,6 +103,55 @@ winrt::fire_and_forget LoadImageIntoSurface(
 
     CopyTexutreIntoCompositionSurface(surface, imageTexture, d3dContext);
     co_return;
+}
+
+winrt::fire_and_forget RegisterForDeviceLost(
+    wil::shared_event const& eventHandle,
+    winrt::com_ptr<ID3D11Device> const& d3dDevice,
+    winrt::CompositionGraphicsDevice const& compositionGraphics)
+{
+    // Get our own references for the coroutine
+    auto deviceLostEvent = eventHandle;
+    auto compGraphics = compositionGraphics;
+
+    DWORD cookie = 0;
+    auto d3dDevice4 = d3dDevice.as<ID3D11Device4>();
+    winrt::check_hresult(d3dDevice4->RegisterDeviceRemovedEvent(deviceLostEvent.get(), &cookie));
+
+    co_await winrt::resume_on_signal(deviceLostEvent.get());
+    deviceLostEvent.ResetEvent(); // Reset the event since we're reusing it.
+    d3dDevice4->UnregisterDeviceRemoved(cookie);
+
+    while (true)
+    {
+        try
+        {
+            // Create a new D3D device and tell our CompositionGraphicsDevice about it
+            auto newD3dDevice = util::CreateD3DDevice();
+            RegisterForDeviceLost(deviceLostEvent, newD3dDevice, compGraphics);
+
+            // This will cause the RenderingDeviceReplaced event to fire on the CompositionGraphicsDevice
+            auto graphicsDeviceInterop = compGraphics.as<ABI::Windows::UI::Composition::ICompositionGraphicsDeviceInterop>();
+            winrt::check_hresult(graphicsDeviceInterop->SetRenderingDevice(newD3dDevice.get()));
+
+            break;
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            auto errorCode = error.code();
+            if (errorCode == DXGI_ERROR_DEVICE_REMOVED ||
+                errorCode == DXGI_ERROR_DEVICE_RESET)
+            {
+                // Loop around to try again.
+            }
+            else
+            {
+                throw;
+            }
+        }
+        // Don't try again too soon.
+        co_await std::chrono::milliseconds(500);
+    }
 }
 
 int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
@@ -155,6 +207,27 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     root.Children().InsertAtTop(content);
 
     LoadImageIntoSurface(surface, d3dDevice);
+
+    // Sometimes the GPU might have to reset due to errors. When ths happens, we'll
+    // need to create a new D3D device and redraw our surface. We can get an event
+    // that will be signaled when that happens. This function waits for that event
+    // and then replaces the redering device on our CompositionGraphicsDevice.
+    wil::shared_event deviceLostEvent(wil::EventOptions::ManualReset);
+    RegisterForDeviceLost(deviceLostEvent, d3dDevice, compositionGraphics);
+
+    // When we get a D3D device, the RenderingDeviceReplaced event will fire. Here
+    // we'll register for the event and redraw the surface when it fires. You can 
+    // exercise this code by using "dxcap.exe -forcetdr". You can get dxcap by going
+    // to Settings -> Apps -> Optoinal features -> Graphics Tools. If the image is 
+    // still there after all the flashing, it worked!
+    auto eventToken = compositionGraphics.RenderingDeviceReplaced([surface](auto&& compGraphics, auto&&)
+        {
+            auto graphicsDeviceInterop = compGraphics.as<ABI::Windows::UI::Composition::ICompositionGraphicsDeviceInterop>();
+            winrt::com_ptr<IUnknown> unknown;
+            winrt::check_hresult(graphicsDeviceInterop->GetRenderingDevice(unknown.put()));
+            auto d3dDevice = unknown.as<ID3D11Device>();
+            LoadImageIntoSurface(surface, d3dDevice);
+        });
     
     // Message pump
     MSG msg;
