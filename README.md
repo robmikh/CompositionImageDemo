@@ -98,10 +98,10 @@ d3dContext->CopySubresourceRegion(
 ```
 
 ## Responding to a device lost event
-Sometimes the GPU needs to reset due to events outside of your control. Maybe there's a driver upgrade, maybe someone sent incorrect commands to the GPU, maybe the user is using a Surface Book and just disconnected from their dedicated GPU, etc. It's important that you listen for this event and redraw your surfaces (and other GPU resources) when this happens. Traditionally, applications discover this upon getting an error back from a D3D call. But what if you aren't redrawing your content every frame? What if you had drawn it once and have since moved on, letting Windows.UI.Composition handling the presentation side for you?
+Sometimes the GPU needs to reset due to events outside of your control. Maybe there's a driver upgrade, maybe someone sent incorrect commands to the GPU, maybe the user is using a Surface Book and just disconnected from their dedicated GPU, etc. It's important that you listen for this event and redraw your surfaces (and other GPU resources) when this happens. Traditionally, applications discover this upon getting an error back from a D3D call. But what if you aren't redrawing your content every frame? What if you had drawn it once and have since moved on, letting Windows.UI.Composition handle the presentation side for you?
 
 ### Listening for device lost
-Luckily, the [`ID3D11Device4`](https://docs.microsoft.com/en-us/windows/win32/api/d3d11_4/nn-d3d11_4-id3d11device4) interface provides a way to be told when this condition occurs. We can create an NT event and ask our D3D device to signal us when it has gone bad:
+Luckily, the [`ID3D11Device4`](https://docs.microsoft.com/en-us/windows/win32/api/d3d11_4/nn-d3d11_4-id3d11device4) interface provides a way for us to be told when this condition occurs. We can create an NT event and ask our D3D device to signal us when it has gone bad:
 
 ```cpp
 DWORD cookie = 0;
