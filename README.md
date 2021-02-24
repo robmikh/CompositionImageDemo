@@ -3,6 +3,16 @@ A minimal sample showing how to load an image into a surface and respond to devi
 
 The following are highlights from this sample:
 
+## Table of Contents
+ * [Image loading](https://github.com/robmikh/CompositionImageDemo#image-loading)
+   * [Getting a stream to our image](https://github.com/robmikh/CompositionImageDemo#getting-a-stream-to-our-image)
+   * [Decode our image](https://github.com/robmikh/CompositionImageDemo#decode-our-image)
+   * [Send our image to the GPU](https://github.com/robmikh/CompositionImageDemo#send-our-image-to-the-gpu)
+   * [Copy our texture into a surface](https://github.com/robmikh/CompositionImageDemo#copy-our-texture-into-a-surface)
+ * [Responding to a device lost event](https://github.com/robmikh/CompositionImageDemo#responding-to-a-device-lost-event)
+   * [Listening for device lost](https://github.com/robmikh/CompositionImageDemo#listening-for-device-lost)
+   * [Redrawing our surfaces](https://github.com/robmikh/CompositionImageDemo#redrawing-our-surfaces)
+
 ## Image loading
 
 ### Getting a stream to our image
@@ -90,6 +100,7 @@ d3dContext->CopySubresourceRegion(
 ## Responding to a device lost event
 Sometimes the GPU needs to reset due to events outside of your control. Maybe there's a driver upgrade, maybe someone sent incorrect commands to the GPU, maybe the user is using a Surface Book and just disconnected from their dedicated GPU, etc. It's important that you listen for this event and redraw your surfaces (and other GPU resources) when this happens. Traditionally, applications discover this upon getting an error back from a D3D call. But what if you aren't redrawing your content every frame? What if you had drawn it once and have since moved on, letting Windows.UI.Composition handling the presentation side for you?
 
+### Listening for device lost
 Luckily, the [`ID3D11Device4`](https://docs.microsoft.com/en-us/windows/win32/api/d3d11_4/nn-d3d11_4-id3d11device4) interface provides a way to be told when this condition occurs. We can create an NT event and ask our D3D device to signal us when it has gone bad:
 
 ```cpp
