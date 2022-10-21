@@ -2,6 +2,7 @@
 #include "MainWindow.h"
 
 const std::wstring MainWindow::ClassName = L"CompositionImageDemo.MainWindow";
+std::once_flag MainWindowClassRegistration;
 
 void MainWindow::RegisterWindowClass()
 {
@@ -21,8 +22,18 @@ MainWindow::MainWindow(std::wstring const& titleString, int width, int height)
 {
     auto instance = winrt::check_pointer(GetModuleHandleW(nullptr));
 
-    winrt::check_bool(CreateWindowExW(WS_EX_NOREDIRECTIONBITMAP, ClassName.c_str(), titleString.c_str(), WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, instance, this));
+    std::call_once(MainWindowClassRegistration, []() { RegisterWindowClass(); });
+
+    auto exStyle = WS_EX_NOREDIRECTIONBITMAP;
+    auto style = WS_OVERLAPPEDWINDOW;
+
+    RECT rect = { 0, 0, width, height };
+    winrt::check_bool(AdjustWindowRectEx(&rect, style, false, exStyle));
+    auto adjustedWidth = rect.right - rect.left;
+    auto adjustedHeight = rect.bottom - rect.top;
+
+    winrt::check_bool(CreateWindowExW(exStyle, ClassName.c_str(), titleString.c_str(), style,
+        CW_USEDEFAULT, CW_USEDEFAULT, adjustedWidth, adjustedHeight, nullptr, nullptr, instance, this));
     WINRT_ASSERT(m_window);
 
     ShowWindow(m_window, SW_SHOWDEFAULT);

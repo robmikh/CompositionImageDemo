@@ -37,10 +37,7 @@ winrt::fire_and_forget RegisterForDeviceLost(
 int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
 {
     // Initialize COM
-    winrt::init_apartment();
-    
-    // Register our window classes
-    MainWindow::RegisterWindowClass();
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
 
     // Create the DispatcherQueue that the compositor needs to run
     auto controller = util::CreateDispatcherQueueControllerForCurrentThread();
@@ -113,14 +110,13 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
         });
     
     // Message pump
-    MSG msg;
+    MSG msg = {};
     while (GetMessageW(&msg, nullptr, 0, 0))
     {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-
-    return static_cast<int>(msg.wParam);
+    return util::ShutdownDispatcherQueueControllerAndWait(controller, static_cast<int>(msg.wParam));
 }
 
 // We can only use IAsyncOperation with WinRT objects
